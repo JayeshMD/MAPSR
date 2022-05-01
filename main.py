@@ -1,6 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
-from schemes import Rk4
+from schemes import rk4, interp_linear
+
 # Data type and device setup
 dtype = torch.float
 device = torch.device("cpu")
@@ -30,7 +31,7 @@ def model_torch(t, xx, w0):
 
 
 ##
-τ = torch.tensor(0.2, device=device, dtype=dtype, requires_grad=True)
+τ = torch.tensor([0.2], device=device, dtype=dtype, requires_grad=True)
 # w0 = torch.randn((2,2), device=device, dtype=dtype, requires_grad=True)
 w0 = torch.zeros((2, 2), device=device, dtype=dtype, requires_grad=True)
 # a = torch.randn((2,2), dtype=dtype).abs()*1e-5
@@ -66,19 +67,7 @@ for kk in range(2000):
         print('lr_w0=', lr_w0)
         print('batch_time=', batch_time)
 
-    τ_l = t_true[0:Nc - 1]
-    τ_u = t_true[1:Nc]
-
-    α = (τ >= τ_l) * (τ < τ_u)
-    for i in range(len(x_true) - Nc):
-        A = torch.cat([x_true[i:i + Nc - 1].reshape(-1, 1), x_true[i + 1:i + Nc].reshape(-1, 1)], 1)
-        P = (α / dt).reshape(-1, 1) * torch.cat([(τ - τ_l).reshape(-1, 1), (τ_u - τ).reshape(-1, 1)], 1)
-        z2 = (A * P).sum()
-        if i == 0:
-            z_true = torch.cat([x_true[i].reshape(-1, 1), z2.reshape(-1, 1)], 1)
-        else:
-            z_temp = torch.cat([x_true[i].reshape(-1, 1), z2.reshape(-1, 1)], 1)
-            z_true = torch.cat([z_true, z_temp], 0)
+    z_true = interp_linear(t_true,x_true,Nc,τ)
 
     if kk % 100 == 0:
         st_id = torch.randint(0, len(z_true) - batch_time, (1,)).item()
@@ -94,10 +83,8 @@ for kk in range(2000):
         if i == 0:
             z_pred = z_true_stack[i, :, :].reshape(1, z_true_stack.shape[1], z_true_stack.shape[2])
         else:
-            z_next = Rk4(fun, t_true[i], z_pred[i - 1, :, :], dt)
+            z_next = rk4(fun, t_true[i], z_pred[i - 1, :, :], dt)
             z_pred = torch.cat([z_pred, z_next.reshape(1, z_true_stack.shape[1], z_true_stack.shape[2])], 0)
-
-    # print(z_pred.shape)
 
     # print("z_pred.shape=", z_pred.shape)
     # print("z_true.shape=",z_true[0:batch_time,:].shape)
