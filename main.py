@@ -31,7 +31,7 @@ def model(t, xx, w0):
 #τ = torch.linspace(0,0.3, 3, device=device, dtype=dtype, requires_grad=True)
 τ = torch.tensor([0,0.3], device=device, dtype=dtype, requires_grad=True)
 w0 = torch.zeros((len(τ), len(τ)), device=device, dtype=dtype, requires_grad=True)
-
+τ_max = 0.4
 ##
 lr_tau = 1e-4
 lr_w0 = 1e0
@@ -118,8 +118,17 @@ for kk in range(3000):
 
         
         τ, w0 = sc.merge_vw(τ, w0, acc)
+        
+        if kk%1000==0 and kk>0:
+            τ = torch.cat([τ, torch.rand([1])*τ_max],0)
+            zc    = torch.zeros([len(τ)-1, 1])
+            zr    = torch.zeros([1, len(τ)])
+            w_new = torch.cat([w0   ,zc],1)
+            w0     = torch.cat([w_new,zr],0)
+
         τ = torch.tensor(τ.detach().numpy(), device=device, requires_grad=True)
         w0 = torch.tensor(w0.detach().numpy(), device=device, requires_grad=True)
+
 
         τ.grad = None
         w0.grad = None
