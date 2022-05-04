@@ -84,3 +84,21 @@ def merge_vw(v,W,acc):
             i += 1
         L = len(v)
     return v, W
+
+def get_arr_sum(d,s,l):
+    # d = dimension, s = sum, l = generally empty list or list to which we want to append result
+    if d==1:
+        l.append([s])
+        return l
+    else:
+        for i in range(s+1):
+            l_temp = []
+            get_arr_sum(d-1, s-i, l_temp)
+            l += [ [i] + lt for lt in l_temp] 
+        return l
+
+def get_pow_mat(dim, degree):
+    pow_list = []
+    for s in range(degree+1):
+        get_arr_sum(dim, s, pow_list)
+    return pow_list
