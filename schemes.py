@@ -102,3 +102,20 @@ def get_pow_mat(dim, degree):
     for s in range(degree+1):
         get_arr_sum(dim, s, pow_list)
     return pow_list
+
+def get_feature_mat(x, degree): 
+    pow_mat = torch.tensor(get_pow_mat(dim=x.shape[1], degree=degree))
+    #print(pow_mat)
+    flag = True
+    for pm in pow_mat:
+        xt = x.pow(pm)
+        xm = xt[:,0]
+        for i in range(1,xt.shape[1]):
+            xm *= xt[:,i]
+        if flag:
+            A = xm.reshape([-1,1])
+            flag = False
+        else:
+            #print(A.shape)
+            A = torch.cat([A,xm.reshape(-1,1)], 1)
+    return A
