@@ -2,7 +2,7 @@
 
 We introduced the model adaptive phase space reconstruction (MAPSR) method. A brief description of the method is given below.
 
-Suppose we have a time series of $x(t)$. We start with and array of delays $\tau=[\tau_1, \tau_2 ,...,\tau_n]$. Here, $\tau_i<\tau_j$ if $ i < j $, i.e. 
+Suppose we have a time series of $x(t)$. We start with an array of delays $\tau=[\tau_1, \tau_2 ,...,\tau_n]$. Here, $\tau_i<\tau_j$ if $ i < j $, i.e. 
 delays are arranged in ascending order and $\tau_i \geq 0$. The $x$ corresponding to the delay state is obtained using interpolation. 
 
 We demonstrate the MAPSR method with ODE ($f$) modeled using polynomial and neural ODE. 
