@@ -14,4 +14,12 @@ Here, $z(t)=[x(t+\tau_1), x(t+\tau_2), x(t+\tau_3)..., x(t+\tau_n)]$ is the dela
  The ODE model is integrated with the initial condition $z_0$. The loss function $\mathcal{L}$ decides the quality of fit as well the suitability of reconstruction to the model. The sensitivity of $\mathcal{L}$ to model parameters and delay vector is obtained using the _back propation_ method from _PyTorch_. The gradient descent method is used to update model parameters and delay vector. 
 
  If consecutive delays are closer than specified accuracy/tolerance, the values are merged, or one of the delays is removed from the array. The training is then again restarted. 
+ 
+ To run the code: Let say with 4 processors,
+ 
+ mpirun -n 4 python run_case.py
+ 
+ or
+ 
+ mpiexec -n 4 python run_case.py
 
