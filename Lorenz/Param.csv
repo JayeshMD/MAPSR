@@ -1,0 +1,11 @@
+Case,datafile,folder,Nc,dimensions,batch_time,batch_size,lr,lr_tau,niters,adjoint,use_gpu,gpu,test_freq,viz,savefig
+1,./Data/Lorenz/clean.txt,Lorenz/LorenzClean_1D,80,1,30,30,1.00E-05,1.00E-05,10001,FALSE,FALSE,0,100,FALSE,TRUE
+2,./Data/Lorenz/clean.txt,Lorenz/LorenzClean_2D,80,2,30,30,1.00E-05,1.00E-05,10001,FALSE,FALSE,0,100,FALSE,TRUE
+3,./Data/Lorenz/clean.txt,Lorenz/LorenzClean_3D,80,3,30,30,1.00E-05,1.00E-05,10001,FALSE,FALSE,0,100,FALSE,TRUE
+4,./Data/Lorenz/clean.txt,Lorenz/LorenzClean_4D,80,4,30,30,1.00E-05,1.00E-05,10001,FALSE,FALSE,0,100,FALSE,TRUE
+5,./Data/Lorenz/clean.txt,Lorenz/LorenzClean_5D,80,5,30,30,1.00E-05,1.00E-05,10001,FALSE,FALSE,0,100,FALSE,TRUE
+6,./Data/Lorenz/noisy.txt,Lorenz/LorenzNoisy_1D,80,1,30,30,1.00E-05,1.00E-05,10001,FALSE,FALSE,0,100,FALSE,TRUE
+7,./Data/Lorenz/noisy.txt,Lorenz/LorenzNoisy_2D,80,2,30,30,1.00E-05,1.00E-05,10001,FALSE,FALSE,0,100,FALSE,TRUE
+8,./Data/Lorenz/noisy.txt,Lorenz/LorenzNoisy_3D,80,3,30,30,1.00E-05,1.00E-05,10001,FALSE,FALSE,0,100,FALSE,TRUE
+9,./Data/Lorenz/noisy.txt,Lorenz/LorenzNoisy_4D,80,4,30,30,1.00E-05,1.00E-05,10001,FALSE,FALSE,0,100,FALSE,TRUE
+10,./Data/Lorenz/noisy.txt,Lorenz/LorenzNoisy_5D,80,5,30,30,1.00E-05,1.00E-05,10001,FALSE,FALSE,0,100,FALSE,TRUE
