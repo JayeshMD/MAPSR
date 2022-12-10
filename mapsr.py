@@ -5,6 +5,7 @@
 
 import os
 import time
+import sys
 import platform
 
 import numpy as np
@@ -15,6 +16,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 import schemes_dev as sc
+import ffnn
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -22,33 +24,19 @@ plt.rcParams.update({
     "font.sans-serif": "Helvetica",
 })
 
-# # Define ODE
-
-class ODEFunc(nn.Module):
-    
-    def __init__(self, n):
-        super(ODEFunc, self).__init__()
-
-        self.net = nn.Sequential(
-            nn.Linear(n, n+100),
-            nn.Tanh(),
-            nn.Linear(n+100, n),
-        )
-
-        for m in self.net.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, mean=0, std=0.001)
-                nn.init.constant_(m.bias, val=0)
-
-    def forward(self, t, y):
-        return self.net(y) 
-
 #============================================== 
 # Model adaptive phase space reconstruction
 #==============================================
 def mapsr(args):
     #args = model_param()
     
+    ffnn.write_nn(args.__dict__['folder'],\
+                  args.__dict__['n_layers'],\
+                  args.__dict__['n_nodes'],)
+
+    
+    sys.path.append(args.__dict__['folder'])
+    from neuralODE import ODEFunc
 
     cpu = torch.device('cpu')
     dtype = torch.float32
@@ -171,7 +159,7 @@ def mapsr(args):
         
         if l_0>len(τ):
             print('Merged τ:',τ)
-            func = ODEFunc(n=len(τ))
+            func = ODEFunc(dimensions=len(τ))
             
         τ = τ.clone().detach().requires_grad_(True)
         optimizer = optim.RMSprop(func.parameters(), lr=lr)   # lr=1e-4
@@ -320,7 +308,7 @@ def mapsr(args):
 
     # # Initialize function and optimizer
 
-    func = ODEFunc(n=len(τ)).to(device)
+    func = ODEFunc(dimensions=len(τ)).to(device)
     optimizer = optim.RMSprop(func.parameters(), lr=args.lr)
     optimizer_τ = optim.RMSprop([τ], lr=args.lr_τ)
 
