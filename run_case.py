@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import numpy as np
 import pandas as pd
 import mapsr as psr
 from mpi4py import MPI
+from mpi4py.util import dtlib
 import time
 
 comm = MPI.COMM_WORLD # Communicator object
@@ -60,16 +62,32 @@ def fun_run(i):
 
 
 # In[5]:
-def get_Job_list(my_rank,n_Job,n_proc):
-    Job_list = []
-    for j in range(n_proc):
-        Job_id = my_rank + n_proc*j
-        if Job_id<n_Job:
-            Job_list.append(Job_id)
-    return Job_list
+datatype = MPI.INT
+np_dtype = dtlib.to_numpy_dtype(datatype)
+itemsize = datatype.Get_size()
 
-Job_list = get_Job_list(my_rank,len(param_df),n_proc)
+N = 1
+win_size = N * itemsize if my_rank == 0 else 0
+win = MPI.Win.Allocate(win_size, comm=comm)
 
-for i in Job_list:
-    print(param_df.iloc[i])
-    fun_run(i)
+buf = np.zeros(N, dtype=np_dtype)
+win.Lock(rank=0)
+win.Put(buf, target_rank=0)
+win.Unlock(rank=0)
+
+N_Jobs = len(param_df)
+
+if my_rank == 0:
+    print('Number of cases:', N_Jobs)
+
+while buf[0]<N_Jobs:
+    win.Lock(rank=0)
+    win.Get(buf, target_rank=0)
+    buf[0] += 1
+    win.Put(buf, target_rank=0)
+    win.Unlock(rank=0)
+    if buf[0]<N_Jobs:
+        Job_Sel = buf[0]
+        print(param_df.iloc[Job_Sel])
+        print("Rank:", my_rank, " takes the Job:", Job_Sel)
+        fun_run(Job_Sel)
