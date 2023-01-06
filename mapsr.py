@@ -7,6 +7,7 @@ import os
 import time
 import sys
 import platform
+import gc
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -93,6 +94,8 @@ def mapsr(args):
             axs[i].set_ylabel('$x_'+str(i+1)+'$',fontsize=20)
             #axs[i].legend(loc='upper right')
         plt.tight_layout()
+        fig.clf()
+        plt.close(fig)
 
         # if args.viz: 
         #     plt.show()
@@ -239,6 +242,8 @@ def mapsr(args):
         #     plt.show(block=False)
         
         plt.pause(1e-3)
+        fig.clf()
+        plt.close(fig)
 
     def plot_loss(fig, title, it, loss):
         cpu = torch.device('cpu')
@@ -259,8 +264,10 @@ def mapsr(args):
         
         # if args.viz:    
         #     plt.show(block=False)
-
+        
         plt.pause(1e-3)
+        fig.clf()
+        plt.close(fig)
 
 
     def plot_delays(fig, title, it, τ_arr):
@@ -286,6 +293,8 @@ def mapsr(args):
         #     plt.show(block=False)
         
         plt.pause(1e-3)
+        fig.clf()
+        plt.close(fig)
 
     def restart(fun,τ):
         print("\n"*3, "Loading state....")
@@ -322,14 +331,7 @@ def mapsr(args):
 
     # # Main function
 
-    fig_cmp = plt.figure(figsize=[10,15])
-
-    fig_loss = plt.figure(figsize=[10,6])
-    title_loss = "Iterations vs Loss"
-
-    fig_delay = plt.figure(figsize=[10,6])
-    title_delay = "Iterations vs Delay"
-
+    
     if args.restart:
         func,τ = restart(func,τ)
 
@@ -367,9 +369,21 @@ def mapsr(args):
             #print('τ:',τ)
             #print('w0:',func.parameters())
             #plot_cmp(fig_cmp, 'Iter:'+ str(kk)+', '+'$\\tau$='+str(τ.to(cpu).detach().numpy()), kk, t_batch, z_batch, t_batch, z_pred)
+            fig_cmp = plt.figure(figsize=[10,15])
+
+            fig_loss = plt.figure(figsize=[10,6])
+            title_loss = "Iterations vs Loss"
+
+            fig_delay = plt.figure(figsize=[10,6])
+            title_delay = "Iterations vs Delay"
+
             plot_cmp(fig_cmp, 'Iter:'+ str(kk), kk, t_batch, z_batch, t_batch, z_pred, τ.to(cpu).detach().numpy())
             plot_loss(fig_loss, title_loss, iterations, loss_arr)
             plot_delays(fig_delay, title_delay, iterations, τ_arr)
             np.savetxt(args.folder+'/delay.txt',τ_arr)
             np.savetxt(args.folder+'/loss.txt',loss_arr)
             torch.save(func.state_dict(), args.folder + '/Weight.pkl')
+
+            plt.close("all")
+            plt.close()
+            gc.collect()
