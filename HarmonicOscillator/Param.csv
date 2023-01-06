@@ -1,0 +1,11 @@
+Case,datafile,folder,Nc,dimensions,n_layers,n_nodes,batch_time,batch_size,lr,lr_tau,niters,adjoint,use_gpu,gpu,test_freq,viz,savefig,restart
+1,./Data/HarmonicOscillator/clean.txt,HarmonicOscillator/HarmonicOscillator_Clean_1D,80,1,4,dimensions+50,20,100,1.00E-03,1.00E-05,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+2,./Data/HarmonicOscillator/clean.txt,HarmonicOscillator/HarmonicOscillator_Clean_2D,80,2,4,dimensions+50,20,100,1.00E-03,1.00E-05,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+3,./Data/HarmonicOscillator/clean.txt,HarmonicOscillator/HarmonicOscillator_Clean__3D,80,3,4,dimensions+50,20,100,1.00E-03,1.00E-05,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+4,./Data/HarmonicOscillator/clean.txt,HarmonicOscillator/HarmonicOscillator_Clean__4D,80,4,4,dimensions+50,20,100,1.00E-03,1.00E-05,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+5,./Data/HarmonicOscillator/clean.txt,HarmonicOscillator/HarmonicOscillator_Clean__5D,80,5,4,dimensions+50,20,100,1.00E-03,1.00E-05,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+6,./Data/HarmonicOscillator/noisy.txt,HarmonicOscillator/HarmonicOscillator_Noisy_1D,80,1,4,dimensions+50,20,100,1.00E-03,1.00E-05,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+7,./Data/HarmonicOscillator/noisy.txt,HarmonicOscillator/HarmonicOscillator_Noisy_2D,80,2,4,dimensions+50,20,100,1.00E-03,1.00E-05,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+8,./Data/HarmonicOscillator/noisy.txt,HarmonicOscillator/HarmonicOscillator_Noisy_3D,80,3,4,dimensions+50,20,100,1.00E-03,1.00E-05,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+9,./Data/HarmonicOscillator/noisy.txt,HarmonicOscillator/HarmonicOscillator_Noisy_4D,80,4,4,dimensions+50,20,100,1.00E-03,1.00E-05,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+10,./Data/HarmonicOscillator/noisy.txt,HarmonicOscillator/HarmonicOscillator_Noisy_5D,80,5,4,dimensions+50,20,100,1.00E-03,1.00E-05,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
