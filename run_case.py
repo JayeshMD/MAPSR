@@ -5,6 +5,7 @@ import pandas as pd
 import mapsr as psr
 from mpi4py import MPI
 import time
+import numpy as np
 
 comm = MPI.COMM_WORLD # Communicator object
 my_rank = comm.Get_rank()
@@ -62,7 +63,7 @@ def fun_run(i):
 # In[5]:
 def get_Job_list(my_rank,n_Job,n_proc):
     Job_list = []
-    for j in range(n_proc):
+    for j in range(int(np.ceil(n_Job/n_proc))):
         Job_id = my_rank + n_proc*j
         if Job_id<n_Job:
             Job_list.append(Job_id)
