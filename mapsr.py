@@ -11,6 +11,7 @@ import gc
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 
 import torch
 import torch.nn as nn
@@ -25,10 +26,15 @@ plt.rcParams.update({
     "font.sans-serif": "Helvetica",
 })
 
+def print_there(x, y, text):
+     sys.stdout.write("\x1b7\x1b[%d;%df%s\x1b8" % (x, y, text))
+     sys.stdout.flush()
+
 #============================================== 
 # Model adaptive phase space reconstruction
 #==============================================
-def mapsr(args):
+def mapsr(args, comm):
+    my_rank = comm.Get_rank()
     #args = model_param()
     
     ffnn.write_nn(args.__dict__['folder'],\
@@ -38,6 +44,10 @@ def mapsr(args):
     
     sys.path.append(args.__dict__['folder'])
     from neuralODE import ODEFunc
+    
+    if not(args.viz): 
+        matplotlib.use('agg')
+    
 
     cpu = torch.device('cpu')
     dtype = torch.float32
@@ -72,9 +82,6 @@ def mapsr(args):
         os.makedirs(args.folder)
     except:
         print("Folder", args.folder, "already exist.")
-        # response = input("Warning: Folder alrady exist. Figures will be replaced. Do you want to replace? (y/n)")
-        # if response.lower()!='y':
-        #     args.savefig= False
 
 
     # # Define function to plot time series
@@ -86,6 +93,7 @@ def mapsr(args):
         n = x.shape[1]
         
         fig = plt.figure()
+        ##plt.ion()
         axs = [fig.add_subplot(n, 1, i+1) for i in range(n)]
         for i in range(n):
             axs[i].plot(t, x[:,i], label = '$x_'+str(i+1)+'$')
@@ -97,8 +105,9 @@ def mapsr(args):
         fig.clf()
         plt.close(fig)
 
-        # if args.viz: 
-        #     plt.show()
+        if args.viz: 
+             plt.pause(1e-3)
+             plt.show(block=False)
 
 
     # # Obtain Time Series
@@ -201,11 +210,6 @@ def mapsr(args):
             axs_arr.set_xlabel('$t_{id}$',fontsize=20)
             text = '$\\tau_'+str(0)+'='+ "{:.4f}".format(τ[0]) +'$'
             axs_arr.set_title(text,fontsize=20)
-            # axs_arr.text(right, top, text, fontsize=20,
-            #             horizontalalignment='center',
-            #             verticalalignment='center',
-            #             #rotation='vertical',
-            #             transform=axs_arr.transAxes)
         else:
             axs_arr = [fig.add_subplot(zt.shape[2]-1,1,i+1) for i in range(zt.shape[2]-1)] 
             axs_arr[0].set_title(title, fontsize=25)
@@ -228,9 +232,6 @@ def mapsr(args):
         fig.tight_layout()
         fig.subplots_adjust(wspace=0.4,
                             hspace=0.4) 
-
-        
-            
         
         if args.savefig:
             #fig.canvas.draw()
@@ -238,10 +239,10 @@ def mapsr(args):
             #print('Saving figure:', fig_name)
             fig.savefig(fig_name)
         
-        # if args.viz:   
-        #     plt.show(block=False)
+        if args.viz:   
+            plt.show(block=False)
+            plt.pause(1e-3)
         
-        plt.pause(1e-3)
         fig.clf()
         plt.close(fig)
 
@@ -260,12 +261,11 @@ def mapsr(args):
             #fig.canvas.draw()
             fig_name = args.folder+'/loss.png'
             fig.savefig(fig_name)
-            #print('Saved figure:', fig_name)
         
-        # if args.viz:    
-        #     plt.show(block=False)
-        
-        plt.pause(1e-3)
+        if args.viz:    
+            plt.show(block=False)
+            plt.pause(1e-3)
+
         fig.clf()
         plt.close(fig)
 
@@ -282,17 +282,14 @@ def mapsr(args):
         axs.set_xlabel('Iteration',fontsize=20)
         axs.set_ylabel('$\\tau$',fontsize=20)
         plt.tight_layout() 
-        
         if args.savefig:
             #fig.canvas.draw()
             fig_name = args.folder+'/delay_evol.png'
             fig.savefig(fig_name)
-            #print('Saved figure:', fig_name)
 
-        # if args.viz:  
-        #     plt.show(block=False)
-        
-        plt.pause(1e-3)
+        if args.viz:  
+            plt.show(block=False)
+            plt.pause(1e-3)
         fig.clf()
         plt.close(fig)
 
@@ -334,6 +331,12 @@ def mapsr(args):
     
     if args.restart:
         func,τ = restart(func,τ)
+    
+    comm.Barrier()
+    if my_rank==0:
+        os.system('clear')
+    comm.Barrier()
+
 
     for kk in range(args.niters):
         iterations.append(kk)
@@ -365,10 +368,14 @@ def mapsr(args):
         τ_arr.append(τ.to(cpu).detach().numpy())
             
         if kk%args.test_freq==0:
-            print('Iter:',kk)
-            #print('τ:',τ)
-            #print('w0:',func.parameters())
-            #plot_cmp(fig_cmp, 'Iter:'+ str(kk)+', '+'$\\tau$='+str(τ.to(cpu).detach().numpy()), kk, t_batch, z_batch, t_batch, z_pred)
+            #print('Iter:'+str(kk), end='\r')
+            #sys.stdout.write('Iter:'+str(kk))
+            # sys.stdout.flush()
+            # sys.stdout.flush()
+            
+            sys.stdout.write("\x1b7\x1b[%d;%df%s\x1b8" % (my_rank+1, 0,'CPU-'+str(my_rank)+'-> Iter:'+str(kk)))
+            sys.stdout.flush()
+
             fig_cmp = plt.figure(figsize=[10,15])
 
             fig_loss = plt.figure(figsize=[10,6])

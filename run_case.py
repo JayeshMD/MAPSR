@@ -26,7 +26,7 @@ class model_param:
         self.Nc = 40         # Maximum delay in terms of Δt steps
         self.niters=2000       # Maximum number of iterations
         self.test_freq=1       # Testing frequency in terms of iterations (for print and plot)
-        self.viz=True          # Visualization
+        self.viz=False          # Visualization
         self.savefig= True     # Set True to save figure
         self.folder='output_folder'   # folder name to store output
         self.use_gpu = False
@@ -57,7 +57,7 @@ def fun_run(i):
             exec('args.lr_τ=param_df.iloc['+str(i)+']["'+var+'"]')
         else:
             exec('args.'+var+'=param_df.iloc['+str(i)+']["'+var+'"]')
-    psr.mapsr(args)
+    psr.mapsr(args, comm)
 
 
 # In[5]:
