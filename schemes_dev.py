@@ -37,6 +37,59 @@ def interp_linear(t, x, nc, τs, device= torch.device('cpu') ):
             z = torch.cat([z, z_temp], 1)
     return z
 
+def interp_linear_multi(t_arr, x_arr, nc, τs, device= torch.device('cpu') ):
+    n = len(τs)
+    z_arr = []
+    for i in range(n):
+        z = interp_linear(t_arr[i], x_arr[i], nc, τs[i])
+        z_arr.append(z)    
+    return z_arr
+
+
+class vector:
+    def __init__(self,v, **kwargs):
+        self.vector = v
+        if('W_in' in kwargs.keys()):
+            self.matrix_in = kwargs['W_in']
+        else:
+            self.matrix_in = np.zeros((len(v),len(v)))
+
+        if('W_out' in kwargs.keys()):
+            self.matrix_out = kwargs['W_out']
+        else:
+            self.matrix_out = np.zeros((len(v),len(v)))
+
+    def find_index_of(self, val):
+        num = np.arange(len(self.vector))
+        return num[self.vector==val]
+
+    def find_index_within_delta(self, val, delta):
+        num = np.arange(len(self.vector))
+        return num[(self.vector<(val+abs(delta))) & 
+                   (self.vector>(val-abs(delta)))]
+
+    def get_index_of_neb(self, index, delta):
+        index_neb = self.find_index_within_delta(self.vector[index], delta)
+        index_neb = index_neb[index_neb!=index]
+        return index_neb
+
+    def remove_arond(self, index, delta):
+        index_neb = self.get_index_of_neb(index, delta)
+        self.vector = np.delete(self.vector, index_neb)
+        for i in index_neb:
+            self.matrix_in[:,index] += self.matrix_in[:,i]
+        self.matrix_in = np.delete(self.matrix_in, index_neb, 1)
+        self.matrix_out = np.delete(self.matrix_out, index_neb, 0)
+
+    def merge(self, delta):
+        i = 0
+        while(i<len(self.vector)):
+            self.remove_arond(i,delta)
+            i = i + 1
+
+    def __repr__(self):
+        return self.vector.__repr__()
+
 def merge(v,acc):
     i = 0
     L = len(v)
