@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import numpy as np
 
 def rk4(fun, t, x, h):
@@ -36,28 +37,19 @@ def interp_linear(t, x, nc, τs, device= torch.device('cpu') ):
         else:
             z = torch.cat([z, z_temp], 1)
     return z
-
-def interp_linear_multi(t_arr, x_arr, nc, τs, device= torch.device('cpu') ):
-    n = len(τs)
-    z_arr = []
-    for i in range(n):
-        z = interp_linear(t_arr[i], x_arr[i], nc, τs[i])
-        z_arr.append(z)    
-    return z_arr
-
-
+#=====================================================
 class vector:
     def __init__(self,v, **kwargs):
         self.vector = v
-        if('W_in' in kwargs.keys()):
-            self.matrix_in = kwargs['W_in']
+        if('W_all' in kwargs.keys()):
+            self.W_all = kwargs['W_all']
         else:
-            self.matrix_in = np.zeros((len(v),len(v)))
+            self.W_all = [np.zeros((len(v),len(v)))]
 
-        if('W_out' in kwargs.keys()):
-            self.matrix_out = kwargs['W_out']
+        if('bias_all' in kwargs.keys()):
+            self.bias_all = kwargs['bias_all']
         else:
-            self.matrix_out = np.zeros((len(v),len(v)))
+            self.bias_all = [np.zeros(len(v))]
 
     def find_index_of(self, val):
         num = np.arange(len(self.vector))
@@ -77,9 +69,11 @@ class vector:
         index_neb = self.get_index_of_neb(index, delta)
         self.vector = np.delete(self.vector, index_neb)
         for i in index_neb:
-            self.matrix_in[:,index] += self.matrix_in[:,i]
-        self.matrix_in = np.delete(self.matrix_in, index_neb, 1)
-        self.matrix_out = np.delete(self.matrix_out, index_neb, 0)
+            self.W_all[0][:,index] += self.W_all[0][:,i]
+        
+        self.W_all[0]  = np.delete(self.W_all[0] , index_neb, 1)
+        self.W_all[-1] = np.delete(self.W_all[-1], index_neb, 0)
+        self.bias_all[-1] = np.delete(self.bias_all[-1], index_neb)
 
     def merge(self, delta):
         i = 0
@@ -90,6 +84,76 @@ class vector:
     def __repr__(self):
         return self.vector.__repr__()
 
+def get_first_weight_mat(ODEfunc):
+    for m in ODEfunc.net.modules():
+        if isinstance(m, nn.Linear):
+            return m.weight.data.detach().numpy()
+
+def get_last_weight_mat(ODEfunc):
+    count1 = 0 
+    for m in ODEfunc.net.modules():
+        if isinstance(m, nn.Linear):
+            count1 +=1
+
+    count2 = 0
+    for m in ODEfunc.net.modules():
+        if isinstance(m, nn.Linear):
+            count2 +=1
+            if (count2==count1):
+                return m.weight.data.detach().numpy()
+
+def set_first_weight_mat(ODEfunc, W):
+    for m in ODEfunc.net.modules():
+        if isinstance(m, nn.Linear):
+            m.weight.data = torch.tensor(W, dtype = torch.float32)
+            return
+
+def set_last_weight_mat(ODEfunc, W):
+    count1 = 0 
+    for m in ODEfunc.net.modules():
+        if isinstance(m, nn.Linear):
+            count1 +=1
+
+    count2 = 0
+    for m in ODEfunc.net.modules():
+        if isinstance(m, nn.Linear):
+            count2 +=1
+            if (count2==count1):
+                m.weight.data = torch.tensor(W, dtype = torch.float32)
+                return ODEfunc
+
+#=================================================
+def get_all_weight_mat(ODEfunc):
+    W_all = []
+    for m in ODEfunc.net.modules():
+        if isinstance(m, nn.Linear):
+            W_all.append(m.weight.data.detach().numpy())
+    return W_all
+
+def get_all_bias_mat(ODEfunc):
+    b_all = []
+    for name, params in ODEfunc.named_parameters():
+        if 'bias' in name:
+            b_all.append(params.detach().numpy())
+
+    return b_all
+
+def set_all_weight_mat(ODEfunc,W_mat):
+    i = 0
+    for m in ODEfunc.net.modules():
+        if isinstance(m, nn.Linear):
+            m.weight.data = torch.tensor(W_mat[i], dtype = torch.float32)
+            i += 1
+
+def set_all_bias_mat(ODEfunc, bias_mat):
+    i = 0
+    for m in ODEfunc.net.modules():
+        if isinstance(m, nn.Linear):
+            m.bias = nn.Parameter(torch.tensor(bias_mat[i], dtype = torch.float32))
+            i += 1
+
+
+#=====================================================
 def merge(v,acc):
     i = 0
     L = len(v)

@@ -167,13 +167,21 @@ def mapsr(args, comm):
     # # Function to modify delay vector and return modified ODE function 
     def get_fun(func, optimizer, optimizer_τ, lr, lr_τ, τ, acc):
         l_0 = len(τ)
-        τ = sc.merge(τ, acc)
-        
-        if l_0>len(τ):
-            print('Merged τ:',τ)
-            func = ODEFunc(dimensions=len(τ))
+
+        W_all = sc.get_all_weight_mat(func)
+        b_all = sc.get_all_bias_mat(func)
+
+        x = sc.vector(τ.detach().numpy(), W_all = W_all, bias_all = b_all)
+
+        x.merge(delta=acc.numpy())
+
+        if l_0> len(x.vector):
+            func = ODEFunc(dimensions=len(τ)) 
+            sc.set_all_weight_mat(func, x.W_all)
+            sc.set_all_bias_mat(func, x.bias_all)
+
+        τ =  torch.tensor(x.vector).requires_grad_(True)
             
-        τ = τ.clone().detach().requires_grad_(True)
         optimizer = optim.RMSprop(func.parameters(), lr=lr)   # lr=1e-4
         optimizer_τ = optim.RMSprop([τ], lr=lr_τ)             # lr=1e-6 => Gives ok results
         
