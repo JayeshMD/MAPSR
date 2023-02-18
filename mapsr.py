@@ -10,8 +10,7 @@ import platform
 import gc
 
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
+import pickle
 
 import torch
 import torch.nn as nn
@@ -20,19 +19,16 @@ import torch.optim as optim
 import schemes_dev as sc
 import ffnn
 
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "sans-serif",
-    "font.sans-serif": "Helvetica",
-})
-
 def print_there(x, y, text):
      sys.stdout.write("\x1b7\x1b[%d;%df%s\x1b8" % (x, y, text))
      sys.stdout.flush()
 
+#from memory_profiler import profile
+
 #============================================== 
 # Model adaptive phase space reconstruction
 #==============================================
+#@profile
 def mapsr(args, comm):
     my_rank = comm.Get_rank()
     #args = model_param()
@@ -44,14 +40,9 @@ def mapsr(args, comm):
     
     sys.path.append(args.__dict__['folder'])
     from neuralODE import ODEFunc
-    
-    if not(args.viz): 
-        matplotlib.use('agg')
-    
-
+        
     cpu = torch.device('cpu')
     dtype = torch.float32
-
 
     # # Define device
 
@@ -83,33 +74,6 @@ def mapsr(args, comm):
     except:
         print("Folder", args.folder, "already exist.")
 
-
-    # # Define function to plot time series
-
-    def plot_timeseries(t,x):
-        if len(x.shape)==1:
-            x = x.reshape(-1,1)
-        
-        n = x.shape[1]
-        
-        fig = plt.figure()
-        ##plt.ion()
-        axs = [fig.add_subplot(n, 1, i+1) for i in range(n)]
-        for i in range(n):
-            axs[i].plot(t, x[:,i], label = '$x_'+str(i+1)+'$')
-            axs[i].set_xlim([min(t), max(t)])
-            axs[i].set_xlabel('$t$', fontsize=20)
-            axs[i].set_ylabel('$x_'+str(i+1)+'$',fontsize=20)
-            #axs[i].legend(loc='upper right')
-        plt.tight_layout()
-        fig.clf()
-        plt.close(fig)
-
-        if args.viz: 
-             plt.pause(1e-3)
-             plt.show(block=False)
-
-
     # # Obtain Time Series
 
     data = np.loadtxt(args.datafile)
@@ -117,75 +81,59 @@ def mapsr(args, comm):
     t_true = torch.tensor(data[:,0])
     x_data = torch.tensor(data[:,1:])
 
-    plot_timeseries(t_true, x_data)
-
     # # Normalized time series
     x_data_sam = x_data
     x_data_sam = x_data_sam- x_data_sam.mean(0)
     x_data_sam = x_data_sam/x_data_sam.abs().max(0).values
 
-    plot_timeseries(t_true, x_data_sam)
+    x_true_sam = (x_data_sam[:,0::]).type(dtype).to(device)
+    t_true_sam = (t_true-t_true[0]).type(dtype).to(device)
 
-    x_true = (x_data_sam[:,0]).type(dtype)
-    t_true = (t_true-t_true[0]).type(dtype)
-
+    
+    
 
     # # Time step
-
+    t_true = t_true_sam
     dt = t_true[1] - t_true[0]
-    x_true = x_true.to(device)
+    
+    x_true = [ x_true_sam[:,0], x_true_sam[:,1] ]
     dt = dt.to(device)
     dt
 
 
     # # Method to creates batch_size number of batches of true data of batch_time duration
 
-    def get_batch(t, x, Nc, τ, batch_time, batch_size, device= torch.device('cpu')):
+    def get_batch(t, x, Nc, τ_arr, batch_time, batch_size, device= torch.device('cpu')):
         dt = (t[1]-t[0]).to(device)
-        assert τ.max()<Nc*dt, "Maximum value of delay should be less than Nc*dt="+str(Nc*dt)+'.'
+        for τ in τ_arr:
+            assert τ.max()<Nc*dt, "Maximum value of delay should be less than Nc*dt="+str(Nc*dt)+'.'
         
         #print('main dt:', dt.device)
         t = t.to(device)
         
-        z_true = sc.interp_linear(t, x, Nc, τ, device=device)
+        z_true = sc.interp_linear_multi([t,t], x, Nc, τ_arr, device=device)
         id_sel = torch.randint(0, z_true.shape[0] - batch_time-1, (batch_size,))
         z_true_stack = torch.stack([z_true[id_sel + i, :] for i in range(batch_time)], dim=0)
         t_true_stack = torch.stack([t_true[id_sel + i] for i in range(batch_time)], dim=0)
         return t_true_stack.to(device), z_true_stack.to(device)
 
-
-    # # Integrate the <i>fun</i> from initial state $z_0$ for given time array $t$
-
-    def get_pred(fun, z0, t):
-        dt = len(t)
-        z_pred = z0
-        for i in range(1, len(t)):
-            z_next = args.method(fun, t[i], z_pred[i - 1, :, :], dt)
-            z_pred = torch.cat([z_pred, z_next.reshape(1, z_pred.shape[1], z_pred.shape[2])], 0)
-        return z_pred.to(device)
-
     # # Function to modify delay vector and return modified ODE function 
-    def get_fun(func, optimizer, optimizer_τ, lr, lr_τ, τ, acc):
-        l_0 = len(τ)
+    def get_fun(func, optimizer, optimizer_τ, lr, lr_τ, τ_arr, acc):
 
-        W_all = sc.get_all_weight_mat(func)
-        b_all = sc.get_all_bias_mat(func)
+        τ_all_1, W_all_1, b_all_1 = sc.merge_multi(τ_arr, func, acc)
 
-        x = sc.vector(τ.detach().numpy(), W_all = W_all, bias_all = b_all)
+        dim = 0
+        for τ in τ_arr:
+            dim += len(τ)
 
-        x.merge(delta=acc.numpy())
-
-        if l_0> len(x.vector):
-            func = ODEFunc(dimensions=len(τ)) 
-            sc.set_all_weight_mat(func, x.W_all)
-            sc.set_all_bias_mat(func, x.bias_all)
-
-        τ =  torch.tensor(x.vector).requires_grad_(True)
+        func = ODEFunc(dimensions=dim) 
+        sc.set_all_weight_mat(func, W_all_1)
+        sc.set_all_bias_mat(func, b_all_1)
             
         optimizer = optim.RMSprop(func.parameters(), lr=lr)   # lr=1e-4
-        optimizer_τ = optim.RMSprop([τ], lr=lr_τ)             # lr=1e-6 => Gives ok results
+        optimizer_τ = optim.RMSprop(τ_arr, lr=lr_τ)             # lr=1e-6 => Gives ok results
         
-        return func, optimizer, optimizer_τ, τ
+        return func, optimizer, optimizer_τ, τ_arr
 
 
     # # Function to compute sum of parameters generally for regularization
@@ -198,108 +146,6 @@ def mapsr(args, comm):
             else:
                 s+= torch.sum(params**power)
         return s
-
-
-    # # Function to plot 2D plots
-    def plot_cmp(fig, title, kk, tt,zt, tp,zp, τ):
-        cpu = torch.device('cpu')
-
-        right = 0.6
-        top   = 0.8
-        
-        fig.clf()
-        fig.suptitle(title, fontsize=25)
-        if zt.shape[2]==1:
-            axs_arr = fig.add_subplot(1,1,1)
-            for p_id in range(args.batch_size):
-                axs_arr.plot(zt[:, p_id, 0].to(cpu).detach().numpy(),'k-')
-                axs_arr.plot(zp[:, p_id, 0].to(cpu).detach().numpy(),'r--', linewidth=2)
-                axs_arr.set_ylabel('$x(t)$',fontsize=20)
-            axs_arr.set_xlabel('$t_{id}$',fontsize=20)
-            text = '$\\tau_'+str(0)+'='+ "{:.4f}".format(τ[0]) +'$'
-            axs_arr.set_title(text,fontsize=20)
-        else:
-            axs_arr = [fig.add_subplot(zt.shape[2]-1,1,i+1) for i in range(zt.shape[2]-1)] 
-            axs_arr[0].set_title(title, fontsize=25)
-            for i in range(zt.shape[2]-1):
-                text = '$\\tau_'+str(i+1)+'='+ "{:.4f}".format(τ[i+1]) +'$'
-                axs_arr[i].set_title(text, fontsize=20)
-                # axs_arr[i].text(right, top, text, fontsize=20,
-                #             horizontalalignment='center',
-                #             verticalalignment='center',
-                #             #rotation='vertical',
-                #             transform=axs_arr[i].transAxes)
-
-                for p_id in range(args.batch_size):
-                    axs_arr[i].plot(zt[:, p_id, 0].to(cpu).detach().numpy(), zt[:, p_id, i+1].to(cpu).detach().numpy(),'k-')
-                    axs_arr[i].plot(zp[:, p_id, 0].to(cpu).detach().numpy(), zp[:, p_id, i+1].to(cpu).detach().numpy(),'r--', linewidth=2)    
-                    axs_arr[i].set_ylabel('$x(t+\\tau_'+str(i+1)+'$)',fontsize=20)
-            
-            axs_arr[i].set_xlabel('x(t)',fontsize=20)
-        
-        fig.tight_layout()
-        fig.subplots_adjust(wspace=0.4,
-                            hspace=0.4) 
-        
-        if args.savefig:
-            #fig.canvas.draw()
-            fig_name = args.folder+'/'+str(kk)+'.png'
-            #print('Saving figure:', fig_name)
-            fig.savefig(fig_name)
-        
-        if args.viz:   
-            plt.show(block=False)
-            plt.pause(1e-3)
-        
-        fig.clf()
-        plt.close(fig)
-
-    def plot_loss(fig, title, it, loss):
-        cpu = torch.device('cpu')
-        
-        fig.clf()
-        axs = fig.add_subplot(1,1,1)
-        axs.plot(it, loss,'k-')
-        axs.set_title(title, fontsize=25)
-        axs.set_xlabel('Iteration',fontsize=20)
-        axs.set_ylabel('$\mathcal{L}$',fontsize=20)
-        plt.tight_layout()
-
-        if args.savefig:
-            #fig.canvas.draw()
-            fig_name = args.folder+'/loss.png'
-            fig.savefig(fig_name)
-        
-        if args.viz:    
-            plt.show(block=False)
-            plt.pause(1e-3)
-
-        fig.clf()
-        plt.close(fig)
-
-
-    def plot_delays(fig, title, it, τ_arr):
-        cpu = torch.device('cpu')
-        
-        fig.clf()
-        axs = fig.add_subplot(1,1,1)
-        m = len(it)
-        for i in range(m):
-            axs.plot(it[i]*np.ones(len(τ_arr[i])), τ_arr[i],'ko')
-        axs.set_title(title, fontsize=25)
-        axs.set_xlabel('Iteration',fontsize=20)
-        axs.set_ylabel('$\\tau$',fontsize=20)
-        plt.tight_layout() 
-        if args.savefig:
-            #fig.canvas.draw()
-            fig_name = args.folder+'/delay_evol.png'
-            fig.savefig(fig_name)
-
-        if args.viz:  
-            plt.show(block=False)
-            plt.pause(1e-3)
-        fig.clf()
-        plt.close(fig)
 
     def restart(fun,τ):
         print("\n"*3, "Loading state....")
@@ -315,14 +161,19 @@ def mapsr(args, comm):
 
 
     # # Initialize delay vector $\tau$ and $acc$. If $|\tau_i-\tau_j|<acc$ then $\tau_i$ and $\tau_j$ will merge
-
-    τ = torch.linspace(0,args.Nc*dt, args.dimensions+1)
-    τ = τ[0:args.dimensions].to(device).clone().detach().requires_grad_(True)
+    τ_arr = []
+    for i in range(len(x_true)):
+        τ = torch.linspace(0,args.Nc*dt, args.dimensions+1)
+        τ_arr.append(τ[0:args.dimensions].to(device).clone().detach().requires_grad_(True))
     acc = 0.5*dt
 
-    # # Initialize function and optimizer
+    dim = 0
+    for τ in τ_arr:
+        dim += len(τ)
 
-    func = ODEFunc(dimensions=len(τ)).to(device)
+    # # Initialize function and optimizer
+    
+    func = ODEFunc(dimensions=dim).to(device)
     optimizer = optim.RMSprop(func.parameters(), lr=args.lr)
     optimizer_τ = optim.RMSprop([τ], lr=args.lr_τ)
 
@@ -330,8 +181,8 @@ def mapsr(args, comm):
     # # Variables to be monitored
 
     iterations = []
-    loss_arr = []
-    τ_arr = []
+    loss_arr_save = []
+    τ_arr_save = []
 
 
     # # Main function
@@ -340,22 +191,24 @@ def mapsr(args, comm):
     if args.restart:
         func,τ = restart(func,τ)
     
-    comm.Barrier()
-    if my_rank==0:
-        os.system('clear')
-    comm.Barrier()
+    #comm.Barrier()
+    os.system('clear')
+    #comm.Barrier()
 
 
     for kk in range(args.niters):
+        #print("kk:", kk)
+
+
         iterations.append(kk)
         
         batch_time = args.batch_time #+ (kk//1000)*10
-        func, optimizer, optimizer_τ, τ = get_fun(func, optimizer, optimizer_τ, args.lr, args.lr_τ, τ, acc)
+        func, optimizer, optimizer_τ, τ_arr = get_fun(func, optimizer, optimizer_τ, args.lr, args.lr_τ, τ_arr, acc)
         
         optimizer.zero_grad()
         optimizer_τ.zero_grad()
 
-        t_batch, z_batch = get_batch(t_true, x_true, args.Nc, τ, batch_time, args.batch_size, device=device)
+        t_batch, z_batch = get_batch(t_true, x_true, args.Nc, τ_arr, batch_time, args.batch_size, device=device)
         
         #print(z_batch.shape)
         
@@ -364,41 +217,39 @@ def mapsr(args, comm):
         #loss = torch.mean(torch.abs(z_pred - z_batch)) + 1e-10*sum_weights(func,power=2)+ 1e-6*torch.sum(torch.abs(τ/dt))
         loss = torch.mean(torch.sum(torch.abs(z_pred-z_batch),axis=2))
         loss.backward()
-        loss_arr.append(loss.to(cpu).detach().numpy())
+        loss_arr_save.append(loss.to(cpu).detach().numpy())
         #print('loss:',loss)
         optimizer.step()
         
         if kk>10:
             optimizer_τ.step()
             with torch.no_grad():
-                τ[0] = 0.0
+                #min_id = 0
+                τ_min = 0
+                for i in range(len(τ_arr)):
+                    if τ_arr[i][0]<τ_min:
+                        τ_min = τ_arr[i][0]
+                        #min_id = i
+                for i in range(len(τ_arr)):
+                    τ_arr[i] = τ_arr[i] - τ_min
         
-        τ_arr.append(τ.to(cpu).detach().numpy())
-            
-        if kk%args.test_freq==0:
-            #print('Iter:'+str(kk), end='\r')
-            #sys.stdout.write('Iter:'+str(kk))
-            # sys.stdout.flush()
-            # sys.stdout.flush()
-            
+        τ_arr_save.append(τ.to(cpu).detach().numpy())
+
+        if kk%args.test_freq==0:  
             sys.stdout.write("\x1b7\x1b[%d;%df%s\x1b8" % (my_rank+1, 0,'CPU-'+str(my_rank)+'-> Iter:'+str(kk)))
             sys.stdout.flush()
 
-            fig_cmp = plt.figure(figsize=[10,15])
+            pred_file = args.folder +'/comp_pred_'+str(kk)+'.pkl'
 
-            fig_loss = plt.figure(figsize=[10,6])
-            title_loss = "Iterations vs Loss"
+            with open(pred_file,'wb') as pred_file_open:
+                pickle.dump(['Iter:'+ str(kk), kk, t_batch, z_batch, t_batch, z_pred, τ.to(cpu).detach().numpy()], pred_file_open)
 
-            fig_delay = plt.figure(figsize=[10,6])
-            title_delay = "Iterations vs Delay"
+            with open(args.folder+'/delay.pkl', 'wb') as fl:
+                pickle.dump(τ_arr_save, fl)
 
-            plot_cmp(fig_cmp, 'Iter:'+ str(kk), kk, t_batch, z_batch, t_batch, z_pred, τ.to(cpu).detach().numpy())
-            plot_loss(fig_loss, title_loss, iterations, loss_arr)
-            plot_delays(fig_delay, title_delay, iterations, τ_arr)
-            np.savetxt(args.folder+'/delay.txt',τ_arr)
-            np.savetxt(args.folder+'/loss.txt',loss_arr)
+            with open(args.folder+'/loss.pkl', 'wb') as fl:
+                pickle.dump(loss_arr_save, fl)
+
             torch.save(func.state_dict(), args.folder + '/Weight.pkl')
-
-            plt.close("all")
-            plt.close()
-            gc.collect()
+        gc.collect()
+# %%

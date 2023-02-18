@@ -142,7 +142,7 @@ def set_all_weight_mat(ODEfunc,W_mat):
     i = 0
     for m in ODEfunc.net.modules():
         if isinstance(m, nn.Linear):
-            m.weight.data = torch.tensor(W_mat[i], dtype = torch.float32)
+            m.weight.data = torch.tensor(np.array(W_mat[i]), dtype = torch.float32)
             i += 1
 
 def set_all_bias_mat(ODEfunc, bias_mat):
@@ -422,3 +422,53 @@ def false_nearest_neighbour(X,d_max,tau,Rtol=10, Atol=2):
     FNN = (FNN/FNN[1])* 100
     
     return FNN
+
+
+#==============================================
+
+def interp_linear_multi(t_arr, x_arr, nc, τs, device= torch.device('cpu') ):
+    # print("interp_linear_multi:")
+    # print("\tsize(τs) = ", len(τs))
+    n = len(τs)
+    z = interp_linear(t_arr[0], x_arr[0], nc, τs[0])
+    for i in range(1,n):
+        z = torch.cat([z, interp_linear(t_arr[i], x_arr[i], nc, τs[i])],1)    
+    return z
+
+def merge_multi(τ_arr, func, acc):
+    W_all_0 = get_all_weight_mat(func)
+    b_all_0 = get_all_bias_mat(func)
+
+    # print(W_all_0)
+    # print(b_all_0)
+
+    τ_all_1 = []
+    col_start = 0
+    
+    for i in range(len(τ_arr)):
+        l_0 = len(τ_arr[i])
+        col_end   = col_start + l_0
+
+        W_all = [W_all_0[0][:,col_start:col_end]]
+        W_all += W_all_0[1:-1]                          # not a normal addition appends W_all_0[1:-1] to W_all
+        W_all.append(W_all_0[-1][col_start:col_end,:])
+
+        b_all = b_all_0[0:-1]
+        b_all.append(b_all_0[-1][col_start:col_end])
+        
+        x = vector(τ_arr[i].detach().numpy(), W_all = W_all, bias_all = b_all)
+        x.merge(delta=acc.numpy())
+        
+        if(i==0):
+            W_all_1 = x.W_all
+            b_all_1 = x.bias_all
+        else:
+            W_all_1[0]  = np.hstack([ W_all_1[0], x.W_all[0]])
+            W_all_1[-1] = np.vstack([ W_all_1[-1], x.W_all[-1]])
+
+            b_all_1[-1] = np.hstack([b_all_1[-1], x.bias_all[-1]])
+
+        τ_all_1.append(torch.tensor(x.vector).requires_grad_(True))
+        col_start = col_end
+
+    return τ_all_1, W_all_1, b_all_1
