@@ -5,6 +5,9 @@ def write_nn(nn_fld,n_layers,n_nodes='10'):
     if not(os.path.exists(nn_fld)):
         os.makedirs(nn_fld)
 
+    if not(isinstance(n_nodes,str)):
+        n_nodes = str(n_nodes)
+
     file_name = nn_fld+'/neuralODE.py'
     text_file = open(file_name,"w")
 

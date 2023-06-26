@@ -45,10 +45,42 @@ class model_param:
 # In[3]:
 
 
-param_df = pd.read_csv("Lorenz/Param.csv")
-column_name = list(param_df.keys())
+param_df_in = pd.read_csv("Exp_Tara/Param.csv")
+column_name_in = list(param_df_in.keys())
 # In[4]:
 
+print(param_df_in)
+print(column_name_in)
+
+param_df = pd.DataFrame()
+count = 0
+for i in range(len(param_df_in)):
+    param_df_temp = pd.DataFrame()
+    print(param_df_in.iloc[i]['dim_min'], end='-')
+    print(param_df_in.iloc[i]['dim_max'])
+
+    dim_min = param_df_in.iloc[i]['dim_min']
+    dim_max = param_df_in.iloc[i]['dim_max']
+
+    n =  dim_max - dim_min + 1
+
+    for col in column_name_in:
+        if col == 'Case':
+            param_df_temp[col] = count + np.arange(n)
+        elif col == 'folder_init': 
+            param_df_temp['folder'] = [param_df_in.iloc[i][col]+'_D'+str(j) for j in range(dim_min,dim_max+1)]
+            param_df_temp['dimensions'] = np.arange(dim_min, dim_max+1)
+        else:
+            param_df_temp[col] = [param_df_in.iloc[i][col]]*n
+    count += n 
+    param_df = pd.concat([param_df,param_df_temp])
+
+column_name = list(param_df.keys())
+# print(param_df)
+# print(len(param_df))
+# param_df = param_df.set_index(np.arange(len(param_df)))
+# print(param_df)
+# exit()
 
 def fun_run(i):
     args = model_param()
@@ -72,5 +104,8 @@ def get_Job_list(my_rank,n_Job,n_proc):
 Job_list = get_Job_list(my_rank,len(param_df),n_proc)
 
 for i in Job_list:
+    # try:
     print(param_df.iloc[i])
     fun_run(i)
+    # except:
+    #     pass

@@ -430,9 +430,9 @@ def interp_linear_multi(t_arr, x_arr, nc, τs, device= torch.device('cpu') ):
     # print("interp_linear_multi:")
     # print("\tsize(τs) = ", len(τs))
     n = len(τs)
-    z = interp_linear(t_arr[0], x_arr[0], nc, τs[0])
+    z = interp_linear(t_arr[0], x_arr[0], nc, τs[0], device=device)
     for i in range(1,n):
-        z = torch.cat([z, interp_linear(t_arr[i], x_arr[i], nc, τs[i])],1)    
+        z = torch.cat( [z, interp_linear(t_arr[i], x_arr[i], nc, τs[i], device=device)], 1)    
     return z
 
 def merge_multi(τ_arr, func, acc):
