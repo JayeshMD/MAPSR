@@ -1,7 +1,7 @@
-Case,datafile,folder_init,start_id,end_id,dtau,Nc,dim_min,dim_max,n_layers,n_nodes,batch_time,batch_size,lr_start,lr_end,lr_tau_start,lr_tau_end,niters,adjoint,use_gpu,gpu,test_freq,viz,savefig,restart
-1,./Data/HarmonicOscillator/noisy_0.txt,HarmonicOscillator/HarmonicOscillator_Noisy_0,0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
-2,./Data/HarmonicOscillator/noisy_1.txt,HarmonicOscillator/HarmonicOscillator_Noisy_1,0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
-3,./Data/HarmonicOscillator/noisy_2.txt,HarmonicOscillator/HarmonicOscillator_Noisy_2,0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
-4,./Data/HarmonicOscillator/noisy_3.txt,HarmonicOscillator/HarmonicOscillator_Noisy_3,0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
-5,./Data/HarmonicOscillator/noisy_4.txt,HarmonicOscillator/HarmonicOscillator_Noisy_4,0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
-6,./Data/HarmonicOscillator/noisy_5.txt,HarmonicOscillator/HarmonicOscillator_Noisy_5,0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+Case,datafile,folder_init,timeseries_index,start_id,end_id,dtau,Nc,dim_min,dim_max,n_layers,n_nodes,batch_time,batch_size,lr_start,lr_end,lr_tau_start,lr_tau_end,niters,adjoint,use_gpu,gpu,test_freq,viz,savefig,restart
+1,./Data/HarmonicOscillator/noisy_0.txt,HarmonicOscillator/HarmonicOscillator_Noisy_0,[0],0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+2,./Data/HarmonicOscillator/noisy_1.txt,HarmonicOscillator/HarmonicOscillator_Noisy_1,[0],0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+3,./Data/HarmonicOscillator/noisy_2.txt,HarmonicOscillator/HarmonicOscillator_Noisy_2,[0],0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+4,./Data/HarmonicOscillator/noisy_3.txt,HarmonicOscillator/HarmonicOscillator_Noisy_3,[0],0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+5,./Data/HarmonicOscillator/noisy_4.txt,HarmonicOscillator/HarmonicOscillator_Noisy_4,[0],0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE
+6,./Data/HarmonicOscillator/noisy_5.txt,HarmonicOscillator/HarmonicOscillator_Noisy_5,[0],0,10000,20,200,1,5,0,50,50,100,0.001,0.001,0.00001,0.00001,20001,FALSE,FALSE,0,100,FALSE,TRUE,FALSE

@@ -11,6 +11,7 @@ import gc
 
 import numpy as np
 import pickle
+import json
 
 import torch
 import torch.nn as nn
@@ -95,7 +96,13 @@ def mapsr(args, comm):
     t_true = t_true_sam
     dt = t_true[1] - t_true[0]
     
-    x_true = [ x_true_sam[:,0], x_true_sam[:,1] ]
+    x_true = []
+
+    print(args.timeseries_index)
+
+    for id in json.loads(args.timeseries_index):
+        x_true.append(x_true_sam[:,id])
+
     dt = dt.to(device)
     dt
 
