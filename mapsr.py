@@ -71,9 +71,6 @@ def mapsr(args, comm):
 
     if args.restart:
         func,τ = mapsr_utils.restart(args, device, func, τ)  
-    
-    mapsr_utils.create_log(args.folder+"/progress.txt", "Processor: "+ str(my_rank))
-    mapsr_utils.write_log(args.folder+"/progress.txt", "Iterations:")
 
     for kk in range(args.niters):
      
@@ -116,7 +113,6 @@ def mapsr(args, comm):
         τ_arr_save.append(τ_arr_temp)
 
         if kk%args.test_freq==0:  
-            mapsr_utils.write_log(args.folder+"/progress.txt", str(kk))
 
             pred_file = args.folder +'/comp_pred_'+str(kk)+'.pkl'
 
