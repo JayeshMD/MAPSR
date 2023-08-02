@@ -24,6 +24,24 @@ def print_there(x, y, text):
      sys.stdout.write("\x1b7\x1b[%d;%df%s\x1b8" % (x, y, text))
      sys.stdout.flush()
 
+# # Method to creates batch_size number of batches of true data of batch_time duration
+
+def get_batch(t_true, x, Nc, τ_arr, batch_time, batch_size, device= torch.device('cpu'), id_sel = None):
+    t = t_true
+    dt = (t[1]-t[0]).to(device)
+    for τ in τ_arr:
+        assert τ.max()<Nc*dt, "Maximum value of delay should be less than Nc*dt="+str(Nc*dt)+'.'
+    
+    #print('main dt:', dt.device)
+    t = t.to(device)
+    
+    z_true = sc.interp_linear_multi([t,t], x, Nc, τ_arr, device=device)
+    if id_sel == None:
+        id_sel = torch.randint(0, z_true.shape[0] - batch_time-1, (batch_size,))
+    z_true_stack = torch.stack([z_true[id_sel + i, :] for i in range(batch_time)], dim=0)
+    t_true_stack = torch.stack([t_true[id_sel + i] for i in range(batch_time)], dim=0)
+    return t_true_stack.to(device), z_true_stack.to(device)
+
 #from memory_profiler import profile
 
 #============================================== 
@@ -107,21 +125,7 @@ def mapsr(args, comm):
     dt
 
 
-    # # Method to creates batch_size number of batches of true data of batch_time duration
-
-    def get_batch(t, x, Nc, τ_arr, batch_time, batch_size, device= torch.device('cpu')):
-        dt = (t[1]-t[0]).to(device)
-        for τ in τ_arr:
-            assert τ.max()<Nc*dt, "Maximum value of delay should be less than Nc*dt="+str(Nc*dt)+'.'
-        
-        #print('main dt:', dt.device)
-        t = t.to(device)
-        
-        z_true = sc.interp_linear_multi([t,t], x, Nc, τ_arr, device=device)
-        id_sel = torch.randint(0, z_true.shape[0] - batch_time-1, (batch_size,))
-        z_true_stack = torch.stack([z_true[id_sel + i, :] for i in range(batch_time)], dim=0)
-        t_true_stack = torch.stack([t_true[id_sel + i] for i in range(batch_time)], dim=0)
-        return t_true_stack.to(device), z_true_stack.to(device)
+    
 
     # # Function to modify delay vector and return modified ODE function 
     def get_fun(func, optimizer, optimizer_τ, lr, lr_τ, τ_arr, acc):
@@ -213,26 +217,8 @@ def mapsr(args, comm):
     if args.restart:
         func,τ = restart(func,τ)
     
-    #comm.Barrier()
     os.system('clear')
-    #comm.Barrier()
-
-    # lr_1 = []
-    # lr_2 = []
-
-    # for kk in range(args.niters):
-    #     #print("kk:", kk)
-    #     lr_1.append(lr(kk))
-    #     lr_2.append(lr_τ(kk))
-
-    # import matplotlib.pyplot as plt
-    # fig = plt.figure()
-    # axs = fig.add_subplot(1,1,1)
-    # axs.plot(lr_1)
-    # axs.plot(lr_2)
-    # fig.savefig('lr_test.png')
-
-    # exit()
+    
 
     for kk in range(args.niters):
         #print("kk:", kk)

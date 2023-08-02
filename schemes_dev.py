@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import pandas as pd
+import pickle as pkl
 
 def rk4(fun, t, x, h):
     k1 = fun(t, x)
@@ -472,3 +474,31 @@ def merge_multi(τ_arr, func, acc):
         col_start = col_end
 
     return τ_all_1, W_all_1, b_all_1
+    
+class model_param:
+    def __init__(self):
+        self.adjoint = False    # Method of integration
+        self.batch_time=30     # Time duration of training batch in terms of Δt steps
+        self.batch_size=30     # Number of batches of training data
+        self.lr = 1e-4         # Learning rate for model parameters
+        self.lr_τ = 1e-5       # Leaning rate delay vector τ
+        self.Nc = 40         # Maximum delay in terms of Δt steps
+        self.niters=2000       # Maximum number of iterations
+        self.test_freq=1       # Testing frequency in terms of iterations (for print and plot)
+        self.viz=True          # Visualization
+        self.savefig= True     # Set True to save figure
+        self.folder='output_folder'   # folder name to store output
+        self.use_gpu = False
+        self.restart = False
+        self.gpu = 0
+        self.datafile = "path_to_data_file.txt"
+        self.dimensions = 4
+        
+    def to(self, device):
+        args_dir = dir(self)
+        for var in args_dir:
+            if type(getattr(self, var)) == int or type(getattr(self, var)) == int:
+                exec('self.'+var+'=torch.tensor(self.'+var+').to(device)')
+                #print(var+'='+ str(getattr(self,var)))
+
+
