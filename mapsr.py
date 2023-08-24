@@ -2,21 +2,15 @@
 # coding: utf-8
 
 import os
-import sys
-import gc
-import pickle
 import torch
-import torch.optim as optim
+import pickle
 import numpy as np
+import torch.optim as optim
 
 # From mapsr
 import ffnn
 import mapsr_utils
 import schemes_dev as sc
-
-def print_there(x, y, text):
-     sys.stdout.write("\x1b7\x1b[%d;%df%s\x1b8" % (x, y, text))
-     sys.stdout.flush()
 
 dtype = torch.float32
 cpu   = torch.device('cpu')
@@ -25,14 +19,7 @@ cpu   = torch.device('cpu')
 # Model adaptive phase space reconstruction
 #==============================================
 
-def mapsr(args, comm):
-    my_rank = comm.Get_rank()
-
-    ffnn.write_nn(args.folder, args.n_layers, args.n_nodes)
-    
-    sys.path.append(args.folder)
-    from neuralODE import ODEFunc
-        
+def mapsr(args):    
     # # Define device
     device = mapsr_utils.set_device(args)
     args.to(device)
@@ -60,8 +47,11 @@ def mapsr(args, comm):
     lr_τ = lambda iteration: mapsr_utils.get_learning_rate(iteration, args.lr_tau_start, args.lr_tau_end, args.niters/2, 1000) 
 
     # Initialize function and optimizer
-    func = ODEFunc(dimensions=dim).to(device)
-    optimizer = optim.RMSprop(func.parameters(), lr=lr(0))
+    func = ffnn.ODEFunc(dimensions      = dim, 
+                        n_nodes_hidden  = args.n_nodes, 
+                        n_layers_hidden = args.n_layers).to(device)
+
+    optimizer   = optim.RMSprop(func.parameters(), lr=lr(0))
     optimizer_τ = optim.RMSprop(τ_arr, lr=lr_τ(0))
 
     # Variables to be monitored
@@ -85,18 +75,20 @@ def mapsr(args, comm):
         t_batch, z_batch = mapsr_utils.get_batch(t_true, x_true, args.Nc, τ_arr, batch_time, args.batch_size, device=device)        
         z_pred = odeint(func, z_batch[0,:,:].reshape(z_batch.shape[1], z_batch.shape[2]), t_batch[:,0], options={'dtype':dtype}).to(device)
         
-        #loss = torch.mean(torch.abs(z_pred - z_batch)) + 1e-10*sum_weights(func,power=2)+ 1e-6*torch.sum(torch.abs(τ/dt))
         loss = torch.mean(torch.sum(torch.abs(z_pred-z_batch),axis=2))
-        #loss = torch.mean(torch.sum(torch.abs(z_pred-z_batch),axis=2)) + 1e-9 * get_sum(τ_arr)
+
+        #loss = get_sum(τ_arr)
         #loss = torch.mean(torch.sum(torch.abs(z_pred-z_batch)**2,axis=2))
         #loss = sum_weights(func,power=1)  # To test if weights are becoming zero => Test ok
-        #loss = get_sum(τ_arr)
+        #loss = torch.mean(torch.sum(torch.abs(z_pred-z_batch),axis=2)) + 1e-9 * get_sum(τ_arr)
+        #loss = torch.mean(torch.abs(z_pred - z_batch)) + 1e-10*sum_weights(func,power=2)+ 1e-6*torch.sum(torch.abs(τ/dt))
+        
         loss.backward()
         
         loss_arr_save.append(loss.to(cpu).detach().numpy())
         optimizer.step()
         
-        if kk>10:
+        if kk>100:
             optimizer_τ.step()
             with torch.no_grad():
                 τ_min = 1
@@ -113,9 +105,8 @@ def mapsr(args, comm):
         τ_arr_save.append(τ_arr_temp)
 
         if kk%args.test_freq==0:  
-
             pred_file = args.folder +'/comp_pred_'+str(kk)+'.pkl'
-
+            
             with open(pred_file,'wb') as pred_file_open:
                 pickle.dump(['Iter:'+ str(kk), kk, t_batch, z_batch, t_batch, z_pred, τ_arr], pred_file_open)
 

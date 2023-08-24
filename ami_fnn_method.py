@@ -12,8 +12,11 @@ class ami_fnn_analysis:
         self.case_names = case_names
         self.param_train = pd.read_csv(param_file)
         self.var_names = var_names
-        self.sampling_time = self.set_sampling_time()
-        self.var_idx = self.set_variable()
+        self.sampling_time = self.get_sampling_time_from_data_file()
+        print("MAPSR analysis is performed with time series:", self.param_train.iloc[0].timeseries_index)
+        print("Name of time series:", self.var_names)
+        self.n_var = len(self.param_train.iloc[0].timeseries_index)
+        self.var_idx = None#self.set_variable()
         self.time_series = dict()
         self.t = dict()
         self.ami = dict()
@@ -24,34 +27,29 @@ class ami_fnn_analysis:
         self.dim_sel = dict()
         self.delay_vec_sel = dict()
 
-
-    def set_sampling_time(self):
+    def get_sampling_time_from_data_file(self):
         f = self.param_train.iloc[0].datafile
         data = np.loadtxt(f)            
         t = data[:,0]
-        sampling_time = t[1]-t[0]
-        
-        resp = input("Current sampling time is "+ str(sampling_time)+". Do you want to reset it?(y/n)")
-        if resp.lower() == 'y':
-            sampling_time = float(input("New sampling time:"))
-        return sampling_time
-        
+        self.sampling_time = t[1]-t[0]
+        return self.sampling_time
 
+    def change_sampling_time(self, sampling_time):
+        self.sampling_time = sampling_time
 
-    def set_variable(self):
+    def set_time_series_id(self, time_series_id):
         param_train = self.param_train
-        n_var = len(param_train.iloc[0].timeseries_index)
-        if n_var>1:
-            print("MAPSR analysis is performed with time series:", param_train.iloc[0].timeseries_index)
-            print("Name of time series:", self.var_names)
-            idx = int(input("Time series index for computing AMI:"))
+        if self.n_var>1:
+            idx = time_series_id
         else:
             idx = param_train.iloc[0].timeseries_index[0]
         print("The AMI-FNN will be performed for variable:", self.var_names[idx])
 
+        self.var_idx = idx
+        
         return idx
 
-    def get_ami_fnn(self):
+    def get_ami_fnn(self, n_bins_div = 1, win=2, dim_max = 15, fnn_th_per = 0.1):
         param_train = self.param_train
         sampling_time = self.sampling_time
 
@@ -68,16 +66,17 @@ class ami_fnn_analysis:
             self.time_series[f] = x[:,self.var_idx]
             self.t[f] = np.arange(len(self.time_series[f]))* self.sampling_time
             
-            fnn_threshold = len(self.time_series[f])*0.1/100
+            fnn_threshold = len(self.time_series[f])*fnn_th_per/100
 
             #print("self.time_series[f].shape",self.time_series[f].shape)
 
-            self.ami[f], self.tau_ami[f], self.dim[f], self.fnn[f], self.fnn_zero[f], self.dim_sel[f], self.delay_vec_sel[f] = ami_fnn(x = self.time_series[f], 
-                                                                                                                      sampling_time = self.sampling_time, 
-                                                                                                                      tau_max = 500, 
-                                                                                                                      fnn_threshold = fnn_threshold, 
-                                                                                                                      win =2, 
-                                                                                                                      dim_max = 15)
+            self.ami[f], self.tau_ami[f], self.dim[f], self.fnn[f], self.fnn_zero[f], self.dim_sel[f], self.delay_vec_sel[f] = ami_fnn( x = self.time_series[f], 
+                                                                                                                                        sampling_time = self.sampling_time, 
+                                                                                                                                        tau_max = 500, 
+                                                                                                                                        fnn_threshold = fnn_threshold, 
+                                                                                                                                        n_bins_div = n_bins_div,
+                                                                                                                                        win = win, 
+                                                                                                                                        dim_max = dim_max)
 
     def create_table(self, case_name, norm_fact):
         nf_str = "$\\times10^{"+str(int(np.log10(norm_fact)))+"}$"
@@ -195,7 +194,7 @@ def delayTS(x,tau,dim):
             xd = np.hstack((xd,x[s:e].reshape(-1,1)))
     return xd
 
-def get_ami(xg, tau_max):
+def get_ami(xg, tau_max, n_bins_div):
     dim = 2
     ami = np.zeros(tau_max)
     eps  = np.finfo(float).eps
@@ -203,7 +202,7 @@ def get_ami(xg, tau_max):
     x    = (xg-min(xg))
     x    = x*(1-eps)/max(x)
     
-    n_bins = np.array(np.ceil(np.log2(len(x))), dtype=int)#//5
+    n_bins = np.array(np.ceil(np.log2(len(x))), dtype=int)// n_bins_div
     #print(n_bins)
     
     x    = np.array(np.floor(x*n_bins), dtype=int)
@@ -239,10 +238,10 @@ def get_local_min(ami, win):
     tau_ami = id_min
     return tau_ami 
 
-def ami_fnn(x, sampling_time, tau_max, fnn_threshold, win =2, dim_max = 15):
+def ami_fnn(x, sampling_time, tau_max, fnn_threshold, n_bins_div = 1, win =2, dim_max = 15):
     t = np.arange(len(x))*sampling_time
 
-    ami = get_ami(x, tau_max)
+    ami = get_ami(x, tau_max, n_bins_div)
     tau_ami = get_local_min(ami, win)
     dim, fnn = get_fnn(x, dim_max, tau_ami)
 

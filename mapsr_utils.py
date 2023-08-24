@@ -1,10 +1,10 @@
-import sys
 import numpy as np
 import pandas as pd
 import schemes_dev as sc
 import torch
 import torch.optim as optim
 import json
+import ffnn
 
 class model_param:
     def __init__(self):
@@ -137,7 +137,10 @@ def get_batch(t_true, x, Nc, τ_arr, batch_time, batch_size, device= torch.devic
     #print('main dt:', dt.device)
     t = t.to(device)
     
+    
+
     z_true = sc.interp_linear_multi([t,t], x, Nc, τ_arr, device=device)
+
     id_sel = torch.randint(0, z_true.shape[0] - batch_time-1, (batch_size,))
     z_true_stack = torch.stack([z_true[id_sel + i, :] for i in range(batch_time)], dim=0)
     t_true_stack = torch.stack([t_true[id_sel + i] for i in range(batch_time)], dim=0)
@@ -153,10 +156,15 @@ def get_fun(args, func, optimizer, optimizer_τ, lr, lr_τ, τ_arr, acc):
     for τ in τ_all_1:
         dim += len(τ)
 
-    sys.path.append(args.folder)
-    from neuralODE import ODEFunc
+    # sys.path.append(args.folder)
+    # from neuralODE import ODEFunc
 
-    func = ODEFunc(dimensions=dim) 
+    # func = ODEFunc(dimensions=dim) 
+    device = next(func.parameters()).device
+    func = ffnn.ODEFunc(dimensions      = dim, 
+                        n_nodes_hidden  = args.n_nodes, 
+                        n_layers_hidden = args.n_layers).to(device)
+
     sc.set_all_weight_mat(func, W_all_1)
     sc.set_all_bias_mat(func, b_all_1)
         

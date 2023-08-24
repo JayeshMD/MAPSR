@@ -3,8 +3,11 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as tck
 import sys
 import mapsr
+import mapsr_utils
+import json
 
 import schemes_dev as sc
+import ffnn
 import pandas as pd
 import pickle as pkl
 import torch
@@ -25,33 +28,29 @@ class pp_mapsr:
         self.loss_average = None
         self.delay_details = None
         self.var_names = var_names
-        self.n_var = None
+        self.n_var = len(self.delay_all[0][0])
         self.case_names = case_names
 
-    def set_var_names(self):
-        var_names = []
-        n_var = len(self.delay_all[0][0])
-        print("There are "+ str(n_var) +" time series.")
-        resp = input("Do you want to name variables?(y/n):").lower()
-        for i in range(n_var):
-            if resp=='y':
-                name  = input("Name of var_"+str(i)+":")
-            else:
-                name = 'var_'+str(i)
-            var_names.append(name)
+    def get_time_series_index(self):
+        return self.param_df.timeseries_index.iloc[0]
+
+
+    def set_var_names(self, var_names):
         self.var_names = var_names
-        self.n_var = n_var
+        
 
-    def set_case_names(self):
-        case_name = {}
-        set_name = input("Do you want to name cases?(y/n):").lower()
-
-        for key in self.get_data_files():
+    def set_case_names(self, case_names):
+        self.case_names = {}
+        #set_name = input("Do you want to name cases?(y/n):").lower()
+        set_name = 'y'
+        count = 0 
+        for key in self.get_data_files(): 
             if set_name=='y':
-                case_name[key] = input(key+':')
+                #case_name[key] = input(key+':')
+                self.case_names[key] = case_names[count]
             else:
-                case_name[key] = key 
-        self.case_names = case_name
+                self.case_names[key] = key 
+            count +=1
 
     def df_all_dim(self, param_df_in):
         '''
@@ -215,8 +214,9 @@ class pp_mapsr:
             delay_catagory[args_all[i].datafile].append([dim, delay_all[i]])
         self.delay_details = delay_catagory
 
-    def plot_mapsr_results(self, fig, axs):
-
+    def plot_mapsr_results(self, fig, axs, title_legend, ncol_legend = 2):
+        if len(axs.shape)==1:
+            axs = axs.reshape(-1,2)
         catagory = self.loss_average
         catagory_legend = self.case_names
         delay_catagory = self.delay_details
@@ -270,8 +270,11 @@ class pp_mapsr:
                 dim_arr_end_label = '+'.join(dim_arr_end_str)
 
                 if case_id==idx:
-                    axs.text(x[case_id]-0.1, y[case_id]-0.12, "$("+ dim_arr_end_label+"="+str(dim_end)+")$", fontsize=20)
-            
+                    if self.n_var>1:
+                        axs.text(x[case_id]-0.1, y[case_id]-0.12, "$("+ dim_arr_end_label+"="+str(dim_end)+")$", fontsize=20)
+                    else:
+                        axs.text(x[case_id]-0.1, y[case_id]-0.12, "$("+str(dim_end)+")$", fontsize=20)
+
             
             # For annotation: Final dimension for minimum loss case
             dim_end   = len(delay_catagory[key][idx][1][-1][timeseries_id])
@@ -285,10 +288,8 @@ class pp_mapsr:
         axs.set_ylabel('$\log_{10}(\\bar{\mathcal{L}}$)', fontsize=20)
         axs.set_xlim([min(arr_plot[:,0]),max(arr_plot[:,0])])
 
-        axs.set_xlim([ 1  ,10])
-        axs.set_ylim([-1.2,0.4])
-        axs.legend(title='$Dynamical$ $state$', \
-                ncol = 1, fontsize=18, title_fontsize=18, frameon=False, loc = 'upper left')
+        axs.legend(title='$'+title_legend+'$', \
+                ncol = ncol_legend, fontsize=18, title_fontsize=18, frameon=False, loc = 'upper left')
 
         axs.set_title("$(a)$", fontsize=20, loc='left')
         axs.tick_params(axis='both', which='major', labelsize=20)
@@ -329,7 +330,6 @@ class pp_mapsr:
             axs[i].set_ylabel('$\\tau$', fontsize=30)
 
             axs[i].set_xlim([0,len(arr_plot[1])])
-            axs[i].set_ylim([-0.0005,0.01])
 
             axs[i].tick_params(axis='both', which='major', labelsize=20)
             axs[i].tick_params(axis='both', which='minor', labelsize=20)
@@ -503,6 +503,7 @@ def plot_attractor(fig, n_row, n_col, data_files, param_df, idx_arr, case_names,
     kk = 1
     alpha = ord('a')
     delay_id_plot, axis_labels = get_delay_plot_id(delay_id, tab_sup, var_names)
+    n_color = len(color_true)
 
     for i in range(len(idx_arr)):
         print('kk=',kk)
@@ -536,8 +537,8 @@ def plot_attractor(fig, n_row, n_col, data_files, param_df, idx_arr, case_names,
                                             tp   = img_data[4],
                                             zp   = img_data[5], 
                                             τ    = img_data[6],
-                                            col_1= color_true[kk-1],
-                                            col_2= color_pred[kk-1],
+                                            col_1= color_true[(kk-1)%n_color],
+                                            col_2= color_pred[(kk-1)%n_color],
                                             delay_id    = delay_id_plot[kk-1],
                                             axis_labels = axis_labels[kk-1])  
             kk +=1
@@ -575,7 +576,16 @@ def get_loss_evolution_in_time(param_df, tab_sup, idx_arr, data_files_lyapunov, 
         data_file = case_details.datafile
         print('data_file: ', data_file)
 
-        func = set_neuralODE_from_existing_weight(folder, dim = tab_details.Dimension)
+        τ_arr = tab_details.Delay
+        Nc = case_details.Nc
+        batch_time = case_details.batch_time
+        batch_size = case_details.batch_size
+
+
+        func = set_neuralODE_from_existing_weight(folder, 
+                                                  dim = tab_details.Dimension,
+                                                  n_nodes = case_details.n_nodes, 
+                                                  n_layers = case_details.n_layers)
 
         cpu = torch.device('cpu')
         dtype = torch.float32
@@ -583,8 +593,8 @@ def get_loss_evolution_in_time(param_df, tab_sup, idx_arr, data_files_lyapunov, 
 
         data = np.loadtxt(data_file)
 
-        t_true = torch.tensor(data[case_details.start_id:case_details.end_id,0])
-        x_data = torch.tensor(data[case_details.start_id:case_details.end_id,1:])
+        t_true = torch.tensor(data[case_details.start_id:case_details.end_id + batch_time*batch_time_mul + Nc,0])
+        x_data = torch.tensor(data[case_details.start_id:case_details.end_id + batch_time*batch_time_mul + Nc,1:])
 
         # # Normalized time series
         x_data_sam = x_data
@@ -599,19 +609,17 @@ def get_loss_evolution_in_time(param_df, tab_sup, idx_arr, data_files_lyapunov, 
         t_true = t_true_sam
         dt = t_true[1] - t_true[0]
 
-        x_true = [ x_true_sam[:,0], x_true_sam[:,1]]
+        ts_ids = json.loads(case_details.timeseries_index)
+        x_true = []
+        for ts_id in ts_ids:
+            x_true.append(x_true_sam[:,ts_id])
+
         dt = dt.to(device)
 
         for i in range(len(var_names)):
             diameter_temp[var_names[i]] = max(x_true[i]) - min(x_true[i])
         
-        Nc = 300
-        τ_arr = tab_details.Delay
-        batch_time = case_details.batch_time
-        batch_size = case_details.batch_size
-
-
-        t_batch, z_batch = mapsr.get_batch(t_true, x_true, Nc, τ_arr, batch_time*batch_time_mul, batch_size, device=device)
+        t_batch, z_batch = mapsr_utils.get_batch(t_true, x_true, Nc, τ_arr, batch_time*batch_time_mul, batch_size, device=device)
         z_pred = odeint(func, z_batch[0,:,:].reshape(z_batch.shape[1], z_batch.shape[2]), t_batch[:,0], options={'dtype':dtype}).to(device)
 
 
@@ -639,15 +647,21 @@ def get_loss_evolution_in_time(param_df, tab_sup, idx_arr, data_files_lyapunov, 
 
     return z_true_batch_out, z_pred_batch_out, loss_batch_out, loss_batch_avg_out, t_batch_out, diameter
 
-def set_neuralODE_from_existing_weight(folder, dim):
-    sys.path.append(folder)
-    from neuralODE import ODEFunc
+def set_neuralODE_from_existing_weight(folder, dim, n_nodes, n_layers):
+    # sys.path.append(folder)
+    # from neuralODE import ODEFunc
 
-    func = ODEFunc(dimensions=dim)
+    # func = ODEFunc(dimensions=dim)
+
+    func = ffnn.ODEFunc(dimensions      = dim, 
+                        n_nodes_hidden  = n_nodes, 
+                        n_layers_hidden = n_layers)
+
+
     func.load_state_dict(torch.load(folder + '/Weight.pkl'))
     return func
 
-def plot_loss_evolution(figsize, case_names, data_files_in, z_true_in, z_pred_in, loss_in, t_in, id_in, color):
+def plot_loss_evolution(figsize, case_names, data_files_in, z_true_in, z_pred_in, loss_in, t_in, id_in, color, output_fld):
     for i in range(len(data_files_in)):
         f = data_files_in[i]
         var_names = list(z_true_in[f].keys())
@@ -665,29 +679,24 @@ def plot_loss_evolution(figsize, case_names, data_files_in, z_true_in, z_pred_in
             loss = loss_in[f][var_names[j]]
 
             axs = fig.add_subplot(2,n_var,j+1)
-            axs.plot(t_plot,loss[:,id_in], color=color[i])
+            axs.plot(t_plot, z_true[:,id_in].detach().numpy(), '-k', label= '$true$')
+            axs.plot(t_plot, z_pred[:,id_in].detach().numpy() ,'--r' ,label='$pred$') 
+            axs.set_xlabel("$t/T_\\lambda$", fontsize=25)
+            axs.set_ylabel("$"+var_names[j]+"$", fontsize=25)
+            axs.set_xlim(min(t_plot),max(t_plot))
 
+
+            axs = fig.add_subplot(2,n_var,n_var+j+1)
+            axs.plot(t_plot,loss[:,id_in], color=color[i%len(color)])
             axs.set_xlabel("$t/T_\\lambda$", fontsize=25)
             axs.set_ylabel("$|"+var_names[j]+ "_{pred}-"+var_names[j]+ "_{true}|$", fontsize=25)
             axs.set_xlim([min(t_plot),max(t_plot)])
 
-
-            axs = fig.add_subplot(2,n_var,n_var+j+1)
-
-            axs.plot(t_plot, z_true[:,id_in].detach().numpy(), '-k', label= '$true$')
-            axs.plot(t_plot, z_pred[:,id_in].detach().numpy() ,'--r' ,label='$pred$')
-            
-            axs.set_xlabel("$t/T_\\lambda$", fontsize=25)
-            axs.set_ylabel("$"+var_names[j]+"$", fontsize=25)
-
-            axs.set_xlim(min(t_plot),max(t_plot))
-            
-
             axs.legend(loc='upper right')
 
         fig.suptitle("$"+case_names[f]+"$",fontsize = 30)
-        plt.tight_layout()
-        fig.savefig(case_names[f]+"_pred.pdf")
+        fig.tight_layout()
+        fig.savefig(output_fld + '/'+ case_names[f]+"_pred_single.pdf")
 
         # fig = plt.figure()
         # axs = fig.add_subplot(1,1,1,projection='3d')
@@ -710,17 +719,17 @@ def get_selective_case_names(dict_in, keys):
         d[key] = dict_in[key]
     return d
 
-def plot_loss_evolution_average(figsize, case_names, data_files_in, loss_avg_in, t_in, diameter, color, ylim):
+def plot_loss_evolution_average(fig, n_row, n_col, case_names, data_files_in, 
+                                loss_avg_in, t_in, diameter, color, ylim, output_fld):
     alpha = 'a'
-    fig = plt.figure(figsize=figsize)
+    
     for i in range(len(data_files_in)):
         f = data_files_in[i]
         var_names = list(loss_avg_in[f].keys())
         n_var = len(var_names)
 
         t_plot = t_in[f]
-
-        axs = fig.add_subplot(1,n_var,i+1)
+        axs = fig.add_subplot(n_row,n_col,i+1)
 
         for j in range(n_var):
 
@@ -733,10 +742,12 @@ def plot_loss_evolution_average(figsize, case_names, data_files_in, loss_avg_in,
         axs.set_xlabel("$t/T_\\lambda$", fontsize=25)
         axs.set_ylabel("$\\bar{\delta}/\delta_{max}$", fontsize=25)
 
-        axs.set_xlim([min(t_plot),max(t_plot)])
+        axs.set_xlim([min(t_plot)-0.01*(max(t_plot)-min(t_plot)),max(t_plot)])
+        #axs.set_xlim([-1,max(t_plot)])
+        
         axs.set_ylim(ylim)
 
-        axs.xaxis.set_major_locator(tck.MultipleLocator(5)) 
+        #axs.xaxis.set_major_locator(tck.MultipleLocator(5)) 
         axs.yaxis.set_major_locator(tck.MultipleLocator(0.1)) 
 
         axs.tick_params(axis='both', which='major', labelsize=20)
@@ -748,4 +759,4 @@ def plot_loss_evolution_average(figsize, case_names, data_files_in, loss_avg_in,
         alpha = chr(ord(alpha)+1)
         axs.legend(fontsize=25)
     plt.tight_layout(pad=5)
-    fig.savefig(case_names[f]+"_pred.pdf")
+    fig.savefig(output_fld + '/'+case_names[f]+"_pred.pdf")

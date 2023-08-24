@@ -15,29 +15,41 @@ def rk4(fun, t, x, h):
 def interp_linear(t, x, nc, τs, device= torch.device('cpu') ):
     flag = 0
     dt  = (t[1]-t[0]).to(device)
+    if nc>len(t):
+        print("Warning: nc>len(t) that is nc=",nc,", len(t)=",len(t),".")
+        
     id_list = torch.arange(nc).to(device)
     
     #print('Device of dt:', dt.device)
     #print('Device of id_list:', id_list.device)
     #print('Device of τs:', τs.device)
     #print('Device of t:', t.device)
-
+    # print('t:', t)
+    # print('τs:', τs)
+    
     for τ in τs:
         #print('Device of τ:', τ.device)
-        with torch.no_grad():
+        # print("nc:",nc)
+        # print(('1st:', t[0:nc]>= τ-dt))
+        # print(('2nd:', t[0:nc]<= τ))
+        
+        with torch.no_grad():    
             id_l = id_list[(t[0:nc]>= τ-dt) * (t[0:nc]<= τ)]
             id_l = id_l[0]
 
+        #print('id_l:',id_l)
+
         α = (τ-t[id_l])/dt
-    
+        #print('α:',α)
         z_temp = (1-α)*x[id_l:-(nc-id_l)] + α*x[id_l+1:-(nc-id_l-1)]
         z_temp = z_temp.reshape(-1,1)
-
+        #print('z_temp:',z_temp)
         if flag==0:
             z = z_temp
             flag = 1
         else:
             z = torch.cat([z, z_temp], 1)
+        #print('z:',z)
     return z
 #=====================================================
 class vector:
