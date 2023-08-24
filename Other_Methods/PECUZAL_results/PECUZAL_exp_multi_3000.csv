@@ -1,0 +1,4 @@
+Case,Method,Dimension,Delay,TimeSeriesID
+Chaos,PECUZAL,1,[ 0],"[ 2]"
+Intermittency,PECUZAL,4,"[ 0, 0.0025, 0.0012, 0.0018]","[ 2, 2, 2, 2]"
+LCO,PECUZAL,4,"[ 0, 0.0021, 0.0011, 0.0033]","[ 2, 2, 2, 2]"

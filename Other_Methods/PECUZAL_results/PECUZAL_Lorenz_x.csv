@@ -1,0 +1,7 @@
+Case,Method,Dimension,Delay,TimeSeriesID
+Noise level: 0\%,PECUZAL,3,"[ 0, 0.18, 0.09]","[ 1, 1, 1]"
+Noise level: 1\%,PECUZAL,3,"[ 0, 0.18, 0.09]","[ 1, 1, 1]"
+Noise level: 2\%,PECUZAL,3,"[ 0, 0.19, 0.11]","[ 1, 1, 1]"
+Noise level: 3\%,PECUZAL,3,"[ 0, 0.19, 0.09]","[ 1, 1, 1]"
+Noise level: 4\%,PECUZAL,4,"[ 0, 0.19, 0.35, 0.33]","[ 1, 1, 1, 1]"
+Noise level: 5\%,PECUZAL,2,"[ 0, 0.19]","[ 1, 1]"
