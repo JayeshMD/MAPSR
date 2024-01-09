@@ -40,3 +40,8 @@ To analyze the results of the above test cases, use the following files, which g
 2. analyze_Lorenz.ipynb
 3. analyze_Exp_Tara.ipynb
 4. analyze_Exp_Tara_multivariate.ipynb
+
+# Reference
+
+The method is based on the paper ["Model adaptive phase space reconstruction"](https://doi.org/10.48550/arXiv.2312.14189).
+
