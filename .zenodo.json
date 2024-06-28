@@ -1,0 +1,36 @@
+{
+    "upload_type": "software",
+    "title": "MAPSR: Model adaptive phase space reconstruction.",
+    "creators": [
+        {
+        "name":"Jayesh M. Dhadphale",
+        "affiliation":"Department of Aerospace Engineering, Indian Institute of Technology Madras, Chennai, Tamil Nadu 600036, India",
+        "orcid":"0000-0003-3502-9009"
+        },
+        {
+        "name":"K. Hauke Kraemer",
+        "affiliation":"Potsdam Institute for Climate Impact Research, Member of the Leibniz Association, 14473 Potsdam, Germany",
+        "orcid":"0000-0002-9943-5391"
+        },
+        {
+        "name":"Maximilian Gelbrecht",
+        "affiliation":"1. Potsdam Institute for Climate Impact Research, Member of the Leibniz Association, 14473 Potsdam, Germany and 2.School of Engineering & Design, Technical University of Munich, 80333 Munich, Germany"
+        },
+        {
+        "name":"Jürgen Kurths",
+        "affiliation":"Potsdam Institute for Climate Impact Research, Member of the Leibniz Association, 14473 Potsdam, Germany"
+        },
+        {
+        "name":"Norbert Marwan",
+        "affiliation":"1. Potsdam Institute for Climate Impact Research, Member of the Leibniz Association, 14473 Potsdam, Germany and 2. Institute of Physics and Astronomy, University of Potsdam, 14476 Potsdam, Germany",
+        "orcid":"0000-0003-1437-7039"
+        },
+        {
+        "name":"R. I. Sujith",
+        "affiliation":"Department of Aerospace Engineering, Indian Institute of Technology Madras, Chennai, Tamil Nadu 600036, India",
+        "orcid":"0000-0002-0791-7896"
+        }
+    ],
+    "keywords": ["phase space", "modeling", "model", "neural ode", "phase space reconstruction", "prediction"]
+  }
+  
